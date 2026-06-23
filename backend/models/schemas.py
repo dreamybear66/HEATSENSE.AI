@@ -19,3 +19,10 @@ class SimulationRequest(BaseModel):
     coolRoofs: int
     evBuses: int
     waterStations: int
+    wards: List[str] = []
+
+class SimulationResponse(BaseModel):
+    baseline_temp: float
+    target_wards: str
+    temp_reduction: float
+    projection: List[dict]

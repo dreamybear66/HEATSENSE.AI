@@ -1,0 +1,154 @@
+.logistics { min-height: 100vh; position: relative; }
+
+/* Gantt */
+.gantt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.gantt-body { padding: 0 16px 16px; }
+.gantt-months {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 8px;
+}
+.gantt-task-label-col {
+  width: 240px;
+  flex-shrink: 0;
+}
+.gantt-month {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+.gantt-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,229,255,0.03);
+}
+.gantt-row:last-child { border-bottom: none; }
+.gantt-task-info {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 16px;
+}
+.gantt-track {
+  flex: 1;
+  height: 24px;
+  background: rgba(0,229,255,0.03);
+  border-radius: 4px;
+  position: relative;
+}
+.gantt-bar {
+  position: absolute;
+  top: 3px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-base);
+  min-width: 40px;
+}
+.gantt-bar:hover { opacity: 1 !important; transform: scaleY(1.1); }
+
+/* Fleet + Log grid */
+.log-fleet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Fleet map */
+.fleet-map {}
+.fleet-map__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.fleet-list { padding: 0 0 8px; }
+.fleet-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 120px 90px;
+  padding: 9px 16px;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid rgba(0,229,255,0.04);
+  font-size: 0.82rem;
+}
+.fleet-row:hover { background: var(--glass-hover); }
+
+/* Log */
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+.log-feed {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 420px;
+}
+.log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(0,229,255,0.04);
+  transition: background var(--transition-fast);
+  animation: none;
+}
+.log-entry--new { animation: log-flash 0.5s ease; }
+@keyframes log-flash {
+  0%   { background: rgba(0,229,255,0.12); }
+  100% { background: transparent; }
+}
+.log-entry:hover { background: var(--glass-hover); }
+.log-entry__icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.log-entry__body { flex: 1; min-width: 0; }
+.log-entry__event { font-size: 0.82rem; color: var(--text-primary); line-height: 1.4; }
+.log-entry__meta {
+  display: flex;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+
+/* Severity border */
+.log-info     { border-left: 3px solid var(--accent-cyan);   padding-left: 13px; }
+.log-success  { border-left: 3px solid var(--accent-green);  padding-left: 13px; }
+.log-warning  { border-left: 3px solid var(--accent-amber);  padding-left: 13px; }
+.log-critical { border-left: 3px solid var(--accent-red);    padding-left: 13px; background: rgba(255,23,68,0.03); }
+
+/* Progress charts */
+.progress-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .log-fleet-grid { grid-template-columns: 1fr; }
+  .progress-charts-grid { grid-template-columns: 1fr; }
+  .gantt-task-label-col { width: 160px; }
+  .gantt-task-info { width: 160px; }
+  .fleet-row { grid-template-columns: 60px 1fr 80px; }
+  .fleet-row span:nth-child(3) { display: none; }
+}

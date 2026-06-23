@@ -1,0 +1,464 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;700;900&display=swap');
+
+/* ============================================================
+   THERMAL MIND VISUAL SYSTEM — Design Tokens
+   ============================================================ */
+:root {
+  /* Core Background Palette */
+  --bg-void:      #020408;
+  --bg-deep:      #080d14;
+  --bg-surface:   #0d1520;
+  --bg-panel:     #111d2e;
+  --bg-elevated:  #162235;
+  --bg-overlay:   rgba(13, 21, 32, 0.85);
+
+  /* Thermal Gradient — Heat Scale */
+  --heat-0:   #00e5ff;   /* Cool / Safe */
+  --heat-1:   #00bfa5;
+  --heat-2:   #76ff03;
+  --heat-3:   #ffea00;
+  --heat-4:   #ff9100;
+  --heat-5:   #ff3d00;   /* Critical */
+  --heat-6:   #d50000;
+
+  /* Accent Palette */
+  --accent-cyan:    #00e5ff;
+  --accent-teal:    #1de9b6;
+  --accent-amber:   #ffb300;
+  --accent-orange:  #ff6d00;
+  --accent-red:     #ff1744;
+  --accent-green:   #00e676;
+  --accent-purple:  #7c4dff;
+
+  /* Glassmorphism */
+  --glass-bg:     rgba(22, 34, 53, 0.6);
+  --glass-border: rgba(0, 229, 255, 0.12);
+  --glass-hover:  rgba(0, 229, 255, 0.06);
+  --glass-glow:   0 0 40px rgba(0, 229, 255, 0.08);
+
+  /* Text */
+  --text-primary:   #e8f4ff;
+  --text-secondary: #7a9bb5;
+  --text-muted:     #3d5a73;
+  --text-accent:    #00e5ff;
+
+  /* Typography */
+  --font-display: 'Outfit', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --nav-height: 64px;
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-base:   250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* Shadows */
+  --shadow-glow-cyan:   0 0 24px rgba(0, 229, 255, 0.25);
+  --shadow-glow-amber:  0 0 24px rgba(255, 179, 0, 0.25);
+  --shadow-glow-red:    0 0 24px rgba(255, 23, 68, 0.3);
+  --shadow-panel:       0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 3px; opacity: 0.5; }
+::-webkit-scrollbar-thumb:hover { opacity: 1; }
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.display-xl { font-size: clamp(3rem, 7vw, 7rem); font-weight: 900; }
+.display-lg { font-size: clamp(2.5rem, 5vw, 5rem); font-weight: 900; }
+.display-md { font-size: clamp(1.8rem, 3vw, 3rem); font-weight: 700; }
+.heading-lg  { font-size: 1.75rem; font-weight: 700; }
+.heading-md  { font-size: 1.25rem; font-weight: 600; }
+.body-lg     { font-size: 1.125rem; }
+.body-sm     { font-size: 0.875rem; }
+.label       { font-size: 0.75rem; font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; }
+.mono        { font-family: var(--font-mono); }
+
+/* ============================================================
+   GRADIENT TEXT
+   ============================================================ */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-teal) 50%, var(--accent-amber) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-heat {
+  background: linear-gradient(90deg, var(--heat-1) 0%, var(--heat-3) 50%, var(--heat-5) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   GLASS PANELS
+   ============================================================ */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--glass-glow), var(--shadow-panel);
+}
+
+.glass-panel-sm {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-teal));
+  color: var(--bg-void);
+  box-shadow: var(--shadow-glow-cyan);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(0, 229, 255, 0.45);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-cyan);
+  border: 1px solid var(--glass-border);
+}
+.btn-secondary:hover {
+  background: var(--glass-hover);
+  border-color: var(--accent-cyan);
+  box-shadow: var(--shadow-glow-cyan);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--accent-orange), var(--accent-red));
+  color: white;
+}
+
+/* ============================================================
+   BADGES / TAGS
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge-critical  { background: rgba(255, 23, 68, 0.15);  color: var(--accent-red);    border: 1px solid rgba(255, 23, 68, 0.3); }
+.badge-high      { background: rgba(255, 109, 0, 0.15);  color: var(--accent-orange); border: 1px solid rgba(255, 109, 0, 0.3); }
+.badge-moderate  { background: rgba(255, 179, 0, 0.12);  color: var(--accent-amber);  border: 1px solid rgba(255, 179, 0, 0.3); }
+.badge-safe      { background: rgba(0, 230, 118, 0.12);  color: var(--accent-green);  border: 1px solid rgba(0, 230, 118, 0.3); }
+.badge-info      { background: rgba(0, 229, 255, 0.1);   color: var(--accent-cyan);   border: 1px solid rgba(0, 229, 255, 0.25); }
+.badge-purple    { background: rgba(124, 77, 255, 0.15); color: #b39dff;              border: 1px solid rgba(124, 77, 255, 0.3); }
+
+/* ============================================================
+   METRIC CARDS
+   ============================================================ */
+.metric-card {
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  transition: all var(--transition-base);
+}
+.metric-card:hover {
+  border-color: rgba(0, 229, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-cyan);
+}
+.metric-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  line-height: 1;
+}
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.metric-delta {
+  font-size: 0.8rem;
+  margin-top: 8px;
+  color: var(--accent-green);
+}
+.metric-delta.down { color: var(--accent-red); }
+
+/* ============================================================
+   PULSE DOTS
+   ============================================================ */
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: pulse-ring 2s ease-out infinite;
+}
+.pulse-dot-cyan  { background: var(--accent-cyan);  }
+.pulse-dot-cyan::after  { background: var(--accent-cyan);  }
+.pulse-dot-red   { background: var(--accent-red);   }
+.pulse-dot-red::after   { background: var(--accent-red);   }
+.pulse-dot-green { background: var(--accent-green); }
+.pulse-dot-green::after { background: var(--accent-green); }
+.pulse-dot-amber { background: var(--accent-amber); }
+.pulse-dot-amber::after { background: var(--accent-amber); }
+
+@keyframes pulse-ring {
+  0%   { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0;   transform: translate(-50%, -50%) scale(3); }
+}
+
+/* ============================================================
+   ANIMATED GRID BG
+   ============================================================ */
+.grid-bg {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ============================================================
+   SCAN LINE EFFECT
+   ============================================================ */
+.scanlines {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.02) 3px,
+    rgba(0, 0, 0, 0.02) 4px
+  );
+}
+
+/* ============================================================
+   GLOW ORBS
+   ============================================================ */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: orb-drift 8s ease-in-out infinite alternate;
+}
+@keyframes orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, -20px) scale(1.1); }
+}
+
+/* ============================================================
+   LAYOUT UTILITIES
+   ============================================================ */
+.page-wrapper {
+  position: relative;
+  min-height: 100vh;
+  padding-top: var(--nav-height);
+  z-index: 2;
+}
+
+.container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-4 { gap: 16px; }
+.gap-6 { gap: 24px; }
+.gap-8 { gap: 32px; }
+.gap-12 { gap: 48px; }
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+.mt-4  { margin-top: 16px; }
+.mt-6  { margin-top: 24px; }
+.mt-8  { margin-top: 32px; }
+.mt-12 { margin-top: 48px; }
+.mb-4  { margin-bottom: 16px; }
+.mb-6  { margin-bottom: 24px; }
+.mb-8  { margin-bottom: 32px; }
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+  margin: 32px 0;
+}
+
+/* ============================================================
+   SECTION LABEL
+   ============================================================ */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.section-label::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(180deg, var(--accent-cyan), var(--accent-teal));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   RECHARTS CUSTOM OVERRIDES
+   ============================================================ */
+.recharts-cartesian-axis-tick-value { fill: var(--text-secondary); font-size: 11px; font-family: var(--font-mono); }
+.recharts-legend-item-text { color: var(--text-secondary) !important; font-size: 12px; }
+.recharts-tooltip-wrapper { border: none !important; }
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scan-line {
+  0%   { top: -5%; }
+  100% { top: 105%; }
+}
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.85; }
+  97% { opacity: 1; }
+  98% { opacity: 0.9; }
+}
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-fade-up  { animation: fade-in-up 0.7s ease forwards; }
+.animate-fade-in  { animation: fade-in 0.5s ease forwards; }
+.animate-slide-left { animation: slide-in-left 0.6s ease forwards; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 0 20px; }
+}
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .display-xl { font-size: 2.8rem; }
+}

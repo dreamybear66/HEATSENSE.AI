@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -36,6 +37,7 @@ const CustomChartTooltip = ({active, payload, label}) => {
 
 /* ============================================================ */
 export default function Strategy() {
+  const navigate = useNavigate();
   const [params, setParams] = useState({ trees:50, coolRoofs:50, evBuses:50, waterStations:50 });
   const [selectedWards, setSelectedWards] = useState(['Koramangala', 'Whitefield']);
   const [activePreset, setActivePreset] = useState(null);
@@ -85,6 +87,22 @@ export default function Strategy() {
     setSelectedWards(prev =>
       prev.includes(ward) ? prev.filter(w=>w!==ward) : [...prev, ward]
     );
+  };
+
+  const deployPolicy = () => {
+    if (selectedWards.length === 0) {
+      alert("Please select at least one target ward before deploying.");
+      return;
+    }
+    const policy = {
+      selectedWards,
+      params,
+      baselineTemp,
+      tempReduction: parseFloat(tempReduction),
+      finalYear
+    };
+    localStorage.setItem('thermal_mind_approved_policy', JSON.stringify(policy));
+    navigate('/logistics');
   };
 
   const SLIDERS = [
@@ -319,7 +337,10 @@ export default function Strategy() {
                   </div>
                 </div>
                 <div className="policy-doc__actions">
-                  <button className="btn btn-primary" onClick={() => {
+                  <button className="btn btn-primary" onClick={deployPolicy}>
+                    ⚡ Approve & Deploy
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => {
                     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                     const pageW = doc.internal.pageSize.getWidth();  // 210mm
                     const margin = 18;

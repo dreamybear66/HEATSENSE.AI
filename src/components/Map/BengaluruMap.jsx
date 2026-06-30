@@ -7,7 +7,7 @@ import './BengaluruMap.css';
 
 const { BaseLayer, Overlay } = LayersControl;
 
-export default function BengaluruMap({ wardsData = [] }) {
+export default function BengaluruMap({ wardsData = [], colorMode = 'risk' }) {
   const [activeFeature, setActiveFeature] = useState(null);
 
   const mapCenter = [12.9716, 77.5946]; // Bangalore center
@@ -18,7 +18,7 @@ export default function BengaluruMap({ wardsData = [] }) {
     type: "FeatureCollection",
     features: wardsData.map(w => ({
       type: "Feature",
-      properties: { name: w.name, pop: w.pop, heat: w.heat, ndvi: w.ndvi, risk: w.risk },
+      properties: { name: w.name, pop: w.pop, heat: w.heat, ndvi: w.ndvi, risk: w.risk, cluster: w.cluster },
       // Generate a small square polygon around lat/lng for visualization
       geometry: {
         type: "Polygon",
@@ -38,11 +38,20 @@ export default function BengaluruMap({ wardsData = [] }) {
 
   // Style for GeoJSON polygons
   const geoJsonStyle = (feature) => {
-    const risk = feature.properties.risk;
     let color = '#00e5ff'; // default safe
-    if (risk === 'critical') color = '#ff1744';
-    else if (risk === 'high') color = '#ff9100';
-    else if (risk === 'moderate') color = '#ffea00';
+
+    if (colorMode === 'cluster') {
+      const cluster = feature.properties.cluster;
+      if (cluster === 'C0') color = '#ff1744';
+      else if (cluster === 'C1') color = '#ff6d00';
+      else if (cluster === 'C2') color = '#ffb300';
+      else if (cluster === 'C3') color = '#00e676';
+    } else {
+      const risk = feature.properties.risk;
+      if (risk === 'critical') color = '#ff1744';
+      else if (risk === 'high') color = '#ff9100';
+      else if (risk === 'moderate') color = '#ffea00';
+    }
 
     return {
       fillColor: color,

@@ -1,6 +1,18 @@
+import os
+
+# Load environment variables from .env file
+for env_path in [".env", "../.env", "backend/.env"]:
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ[key.strip()] = val.strip()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import zones, clusters, simulate
+from routers import zones, clusters, simulate, notifications
 
 app = FastAPI(
     title="Thermal Mind API",
@@ -20,6 +32,7 @@ app.add_middleware(
 app.include_router(zones.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
 app.include_router(simulate.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 @app.get("/")
 def read_root():

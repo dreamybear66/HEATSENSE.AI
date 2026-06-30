@@ -4,7 +4,6 @@ import './Navbar.css';
 
 const NAV_ITEMS = [
   { path: '/',            label: 'Home',         icon: '⬡',  code: 'HOME' },
-  { path: '/network',    label: 'Network',      icon: '◈',  code: 'NET' },
   { path: '/intelligence', label: 'Intelligence', icon: '◉',  code: 'INT' },
   { path: '/strategy',  label: 'Strategy',     icon: '◆',  code: 'STR' },
   { path: '/logistics', label: 'Logistics',    icon: '▣',  code: 'LOG' },

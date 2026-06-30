@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Logistics.css';
@@ -59,6 +59,14 @@ const createCustomIcon = (type, status) => {
   });
 };
 
+function MapUpdater({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 12);
+  }, [center, map]);
+  return null;
+}
+
 /* ---- Fleet Map (Interactive Leaflet Map) ---- */
 function FleetMap({ fleet }) {
   // Center map dynamically on first fleet vehicle's coordinates, or default to Bengaluru Center
@@ -74,13 +82,14 @@ function FleetMap({ fleet }) {
         <span className="label" style={{ color: 'var(--accent-cyan)' }}>⬡ FLEET OPERATIONS — INTERACTIVE MAP</span>
         <span className="pulse-dot pulse-dot-green"/>
       </div>
-      <div style={{ height: '260px', width: '100%', position: 'relative', zIndex: 10 }}>
+      <div style={{ flex: 1, width: '100%', position: 'relative', zIndex: 10, minHeight: '260px' }}>
         <MapContainer
           center={center}
           zoom={12}
           scrollWheelZoom={false}
           style={{ height: '100%', width: '100%' }}
         >
+          <MapUpdater center={center} />
           <TileLayer
             url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
             attribution='&copy; Stadia Maps, &copy; OpenStreetMap contributors'
@@ -132,12 +141,9 @@ export default function Logistics() {
   const [log, setLog] = useState([]);
   const [tick, setTick] = useState(0);
 
-  // Clear policy action
   const clearPolicy = () => {
-    if (confirm("Are you sure you want to clear the active deployment?")) {
-      localStorage.removeItem('thermal_mind_approved_policy');
-      setPolicy(null);
-    }
+    localStorage.removeItem('thermal_mind_approved_policy');
+    setPolicy(null);
   };
 
   // Generate rollout metrics and lists dynamically if policy is present
@@ -298,30 +304,68 @@ export default function Logistics() {
     }));
   }
 
+  // Realistic Event Dictionary
+  const EVENT_DICT = {
+    tree: [
+      { msg: 'Green Corps team dispatched to [Ward] Sector [Num]', severity: 'info' },
+      { msg: 'Soil quality check completed at [Ward] plot', severity: 'success' },
+      { msg: 'Sapling delivery delayed due to traffic near [Ward]', severity: 'warning' },
+      { msg: 'Tree planting milestone reached in [Ward]', severity: 'success' },
+      { msg: 'Watering schedule updated for [Ward] saplings', severity: 'info' },
+    ],
+    roof: [
+      { msg: 'Cool roof coating applied at [Ward] Area [Num]', severity: 'success' },
+      { msg: 'Reflectivity inspection passed: [Ward]', severity: 'success' },
+      { msg: 'Material shortage reported by Infra Unit in [Ward]', severity: 'warning' },
+      { msg: 'Roof structural assessment completed in [Ward]', severity: 'info' },
+      { msg: 'Installation crew shifted to [Ward] commercial zone', severity: 'info' },
+    ],
+    water: [
+      { msg: 'Water station GC-WS-[Num] online at [Ward]', severity: 'success' },
+      { msg: 'Refill warning at [Ward] hydration station', severity: 'warning' },
+      { msg: 'Maintenance crew dispatched to [Ward] water station', severity: 'info' },
+      { msg: 'Water quality test passed at [Ward] terminal', severity: 'success' },
+    ],
+    ev: [
+      { msg: 'EV bus corridor route active in [Ward]', severity: 'success' },
+      { msg: 'Charging station EV-[Num] offline for maintenance in [Ward]', severity: 'warning' },
+      { msg: 'EV Bus telematics sync completed in [Ward]', severity: 'info' },
+      { msg: 'New EV fleet deployed to [Ward] transit hub', severity: 'success' },
+    ],
+    alert: [
+      { msg: 'Localized LST reading in [Ward] nominal (38.6°C)', severity: 'info' },
+      { msg: 'UHI hotspot detected near [Ward] junction', severity: 'warning' },
+      { msg: 'Temperature sensor calibrated in [Ward]', severity: 'info' },
+      { msg: 'Thermal anomaly resolved in [Ward] Sector [Num]', severity: 'success' }
+    ]
+  };
+
+  const getAvailableEvents = (params) => {
+    const pool = [];
+    if (params.trees > 0) pool.push(...EVENT_DICT.tree.map(e => ({...e, type: 'tree'})));
+    if (params.coolRoofs > 0) pool.push(...EVENT_DICT.roof.map(e => ({...e, type: 'roof'})));
+    if (params.waterStations > 0) pool.push(...EVENT_DICT.water.map(e => ({...e, type: 'water'})));
+    if (params.evBuses > 0) pool.push(...EVENT_DICT.ev.map(e => ({...e, type: 'ev'})));
+    pool.push(...EVENT_DICT.alert.map(e => ({...e, type: 'alert'})));
+    return pool;
+  };
+
   // Populate dynamic Initial Logs based on selected wards and active inputs
   useEffect(() => {
     if (!policy) return;
     const { selectedWards, params } = policy;
-    const activeTypes = [];
-    if (params.trees > 0) activeTypes.push({ type: 'tree', label: 'Tree planted at [Ward] Sector [Num]', icon: '🌳', severity: 'info' });
-    if (params.coolRoofs > 0) activeTypes.push({ type: 'roof', label: 'Cool roof installation completed — [Ward] Area [Num]', icon: '🏠', severity: 'success' });
-    if (params.waterStations > 0) activeTypes.push({ type: 'water', label: 'Water station GC-WS-[Num] online at [Ward]', icon: '💧', severity: 'success' });
-    if (params.evBuses > 0) activeTypes.push({ type: 'ev', label: 'EV bus corridor route in [Ward] active', icon: '🚌', severity: 'info' });
-    
-    // Always fallback alert
-    activeTypes.push({ type: 'alert', label: 'Temperature sensor calibrated in [Ward]', icon: '⚠️', severity: 'info' });
+    const pool = getAvailableEvents(params);
     
     const initial = [];
     const now = new Date();
     for (let i = 0; i < 20; i++) {
-      const pastTime = new Date(now.getTime() - i * 15 * 60 * 1000);
+      // stagger history by random 2-15 minutes
+      const pastTime = new Date(now.getTime() - i * (Math.random() * 13 + 2) * 60 * 1000);
       const ts = pastTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const config = activeTypes[i % activeTypes.length];
-      const ward = selectedWards[i % selectedWards.length];
       
-      const eventText = config.label
-        .replace('[Ward]', ward)
-        .replace('[Num]', String((i * 7) % 15 + 1));
+      const config = pool[Math.floor(Math.random() * pool.length)];
+      const ward = selectedWards[Math.floor(Math.random() * selectedWards.length)];
+      const eventText = config.msg.replace('[Ward]', ward).replace('[Num]', Math.floor(Math.random() * 20) + 1);
 
       initial.push({
         id: i + 1,
@@ -329,7 +373,7 @@ export default function Logistics() {
         event: eventText,
         type: config.type,
         ward,
-        severity: i === 3 ? 'warning' : config.severity
+        severity: config.severity
       });
     }
     setLog(initial);
@@ -339,32 +383,26 @@ export default function Logistics() {
   useEffect(() => {
     if (!policy) return;
     const { selectedWards, params } = policy;
-    
-    const liveEvents = [];
-    if (params.trees > 0) liveEvents.push({ type: 'tree', msg: 'Watering team dispatched to tree plots in [Ward]', severity: 'info' });
-    if (params.coolRoofs > 0) liveEvents.push({ type: 'roof', msg: 'Reflectivity inspection passed: [Ward]', severity: 'success' });
-    if (params.waterStations > 0) liveEvents.push({ type: 'water', msg: 'Refill warning cleared at [Ward] station', severity: 'info' });
-    if (params.evBuses > 0) liveEvents.push({ type: 'ev', msg: 'EV Bus telematics sync completed in [Ward]', severity: 'info' });
-    liveEvents.push({ type: 'alert', msg: 'Localized LST reading in [Ward]: 38.6°C (nominal)', severity: 'info' });
+    const pool = getAvailableEvents(params);
 
     const interval = setInterval(() => {
       const now = new Date();
       const ts = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const eventConfig = liveEvents[Math.floor(Math.random() * liveEvents.length)];
-      const targetWard = selectedWards[Math.floor(Math.random() * selectedWards.length)];
+      const config = pool[Math.floor(Math.random() * pool.length)];
+      const ward = selectedWards[Math.floor(Math.random() * selectedWards.length)];
       
-      const eventText = eventConfig.msg.replace('[Ward]', targetWard);
+      const eventText = config.msg.replace('[Ward]', ward).replace('[Num]', Math.floor(Math.random() * 20) + 1);
 
       setLog(prev => [{
         id: Date.now(),
         ts,
         event: eventText,
-        type: eventConfig.type,
-        ward: targetWard,
-        severity: eventConfig.severity,
+        type: config.type,
+        ward,
+        severity: config.severity,
       }, ...prev.slice(0, 19)]);
       setTick(t => t + 1);
-    }, 3500);
+    }, 4500); // Trigger a new log every 4.5 seconds
 
     return () => clearInterval(interval);
   }, [policy]);
@@ -539,9 +577,9 @@ export default function Logistics() {
                 <YAxis tick={{ fill: '#7a9bb5', fontSize: 10 }} domain={[0, 100]}/>
                 <Tooltip contentStyle={{ background: 'var(--bg-panel)', border: '1px solid var(--glass-border)', borderRadius: 8 }}/>
                 <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }}/>
-                {policy.params.trees > 0 && <Bar dataKey="trees" fill="var(--accent-green)" opacity={0.8} radius={[3, 3, 0, 0]} name="Trees Progress %"/>}
-                {policy.params.coolRoofs > 0 && <Bar dataKey="roofs" fill="var(--accent-cyan)"  opacity={0.8} radius={[3, 3, 0, 0]} name="Roofs Progress %"/>}
-                {policy.params.waterStations > 0 && <Bar dataKey="water" fill="var(--accent-teal)"  opacity={0.8} radius={[3, 3, 0, 0]} name="Water Progress %"/>}
+                <Bar dataKey="trees" fill="var(--accent-green)" opacity={0.8} radius={[3, 3, 0, 0]} name="Trees Progress %"/>
+                <Bar dataKey="roofs" fill="var(--accent-cyan)"  opacity={0.8} radius={[3, 3, 0, 0]} name="Roofs Progress %"/>
+                <Bar dataKey="water" fill="var(--accent-teal)"  opacity={0.8} radius={[3, 3, 0, 0]} name="Water Progress %"/>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -576,9 +614,10 @@ export default function Logistics() {
                 <XAxis dataKey="week" tick={{ fill: '#7a9bb5', fontSize: 10 }}/>
                 <YAxis tick={{ fill: '#7a9bb5', fontSize: 10 }}/>
                 <Tooltip contentStyle={{ background: 'var(--bg-panel)', border: '1px solid var(--glass-border)', borderRadius: 8 }}/>
-                {policy.params.trees > 0 && <Line type="monotone" dataKey="trees" stroke="var(--accent-green)" strokeWidth={2} dot={{ fill: 'var(--accent-green)', r: 3 }} name="Trees Planted / Wk"/>}
-                {policy.params.coolRoofs > 0 && <Line type="monotone" dataKey="roofs" stroke="var(--accent-cyan)" strokeWidth={2} dot={{ fill: 'var(--accent-cyan)', r: 3 }} name="Cool Roofs Done / Wk"/>}
-                {policy.params.waterStations > 0 && <Line type="monotone" dataKey="water" stroke="var(--accent-teal)" strokeWidth={2} dot={{ fill: 'var(--accent-teal)', r: 3 }} name="Water Stations Installed / Wk"/>}
+                <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }}/>
+                <Line type="monotone" dataKey="trees" stroke="var(--accent-green)" strokeWidth={2} dot={{ fill: 'var(--accent-green)', r: 3 }} name="Trees Planted / Wk"/>
+                <Line type="monotone" dataKey="roofs" stroke="var(--accent-cyan)" strokeWidth={2} dot={{ fill: 'var(--accent-cyan)', r: 3 }} name="Cool Roofs Done / Wk"/>
+                <Line type="monotone" dataKey="water" stroke="var(--accent-teal)" strokeWidth={2} dot={{ fill: 'var(--accent-teal)', r: 3 }} name="Water Stations Installed / Wk"/>
               </LineChart>
             </ResponsiveContainer>
           </div>

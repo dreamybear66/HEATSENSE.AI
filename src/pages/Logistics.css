@@ -76,7 +76,10 @@
 
 /* Fleet map */
 .fleet-map {
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 300px;
 }
 .fleet-map__label {
   display: flex;

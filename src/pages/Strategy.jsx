@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
+  CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, ComposedChart
 } from 'recharts';
 import './Strategy.css';
 
@@ -12,6 +12,21 @@ const WARDS_LIST = [
   'Malleswaram','Bannerghatta','Hebbal','Lalbagh',
   'BTM Layout','HSR Layout','Electronic City','Marathahalli',
 ];
+
+const WARD_CLUSTERS = {
+  'Koramangala': 'C0 Critical',
+  'Whitefield': 'C0 Critical',
+  'Electronic City': 'C0 Critical',
+  'Marathahalli': 'C0 Critical',
+  'Jayanagar': 'C1 High Risk',
+  'Yelahanka': 'C1 High Risk',
+  'HSR Layout': 'C1 High Risk',
+  'Malleswaram': 'C2 Moderate',
+  'Hebbal': 'C2 Moderate',
+  'BTM Layout': 'C2 Moderate',
+  'Bannerghatta': 'C3 Safe',
+  'Lalbagh': 'C3 Safe'
+};
 
 const SCENARIO_PRESETS = [
   { name:'Aggressive Green', icon:'🌳', trees:80, coolRoofs:60, evBuses:70, waterStations:50 },
@@ -38,9 +53,37 @@ const CustomChartTooltip = ({active, payload, label}) => {
 /* ============================================================ */
 export default function Strategy() {
   const navigate = useNavigate();
-  const [params, setParams] = useState({ trees:50, coolRoofs:50, evBuses:50, waterStations:50 });
+  const [params, setParams] = useState({ trees:0, coolRoofs:0, evBuses:0, waterStations:0 });
   const [selectedWards, setSelectedWards] = useState(['Koramangala', 'Whitefield']);
   const [activePreset, setActivePreset] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+  
+  const location = useLocation();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const ward = searchParams.get('ward');
+    const interventionsStr = searchParams.get('interventions');
+    
+    if (ward) {
+      setSelectedWards([ward]);
+    }
+    
+    if (interventionsStr) {
+      const interventions = interventionsStr.split(',');
+      const newParams = { trees: 20, coolRoofs: 20, evBuses: 20, waterStations: 20 };
+      
+      const strLower = interventionsStr.toLowerCase();
+      if (strLower.includes('tree')) newParams.trees = 85;
+      if (strLower.includes('cool roof')) newParams.coolRoofs = 85;
+      if (strLower.includes('ev bus')) newParams.evBuses = 85;
+      if (strLower.includes('water station')) newParams.waterStations = 85;
+      
+      setParams(newParams);
+      setActivePreset(null);
+    }
+  }, [location.search]);
   
   const [simState, setSimState] = useState({
     projection: [],
@@ -94,6 +137,11 @@ export default function Strategy() {
       alert("Please select at least one target ward before deploying.");
       return;
     }
+    const totalIntervention = params.trees + params.coolRoofs + params.evBuses + params.waterStations;
+    if (totalIntervention === 0) {
+      alert("Please set at least one intervention parameter above 0% before deploying.");
+      return;
+    }
     const policy = {
       selectedWards,
       params,
@@ -102,7 +150,61 @@ export default function Strategy() {
       finalYear
     };
     localStorage.setItem('thermal_mind_approved_policy', JSON.stringify(policy));
-    navigate('/logistics');
+    setShowModal(true);
+  };
+
+  const sendNotification = async (method) => {
+    const currentYear = new Date().getFullYear();
+    let interventionsText = "";
+    if (params.trees > 0) interventionsText += `\n🌳 Tree planting: Jan-Apr ${currentYear + 1}`;
+    if (params.coolRoofs > 0) interventionsText += `\n🏠 Cool roof installations: Feb-Jun ${currentYear + 1}`;
+    if (params.evBuses > 0) interventionsText += `\n🚌 EV bus route expansion: Apr ${currentYear + 1} onwards`;
+    if (params.waterStations > 0) interventionsText += `\n💧 Hydration stations setup: May ${currentYear + 1} onwards`;
+
+    if (interventionsText === "") interventionsText = "\nNo physical interventions planned at this time.";
+
+    const smsDraft = `📢 BBMP Urban Heat Initiative Alert
+📍 Wards: ${selectedWards.join(', ')}
+
+We are launching a 5-year heat mitigation project targeting a -${tempReduction}°C reduction by ${currentYear + 5}.
+
+🛠️ Planned Work Schedule:${interventionsText}
+
+⚠️ Health Precautions During Peak Heat (12 PM - 4 PM):
+• Stay indoors if possible
+• Keep hydrated
+• Use installed public hydration stations
+• Report heat stress emergencies to 108
+
+Track live progress at: bbmp.gov.in/heatplan`;
+
+    setToastMsg(`Sending WhatsApp Broadcast to your phone...`);
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: smsDraft,
+          target_number: "+916376092008"
+        })
+      });
+
+      const data = await response.json();
+      if (data.status === 'success') {
+        setToastMsg(`✅ SMS successfully delivered to your phone!`);
+      } else {
+        setToastMsg(`❌ SMS failed: ${data.error}`);
+      }
+    } catch (err) {
+      setToastMsg(`❌ Network Error: Could not reach backend.`);
+    }
+
+    setTimeout(() => {
+      setToastMsg(null);
+      setShowModal(false);
+      navigate('/logistics');
+    }, 4000);
   };
 
   const SLIDERS = [
@@ -129,19 +231,7 @@ export default function Strategy() {
             Run "What-if" scenarios and project temperature reduction impacts before exporting policy documents.
           </p>
         </div>
-        {/* Impact summary */}
-        <div className="strategy-impact-row">
-          {[
-            { label:'Temp Reduction', value:`-${tempReduction}°C`, color:'var(--accent-cyan)' },
-            { label:'Lives Protected', value: finalYear ? (finalYear.livesProtected > 1000 ? `${(finalYear.livesProtected/1000).toFixed(0)}K` : finalYear.livesProtected) : '0', color:'var(--accent-green)' },
-            { label:'CO₂ Saved (t)', value: finalYear ? `${(finalYear.carbonSaved/1000).toFixed(1)}K` : '0', color:'var(--accent-amber)' },
-          ].map((m,i) => (
-            <div key={i} className="metric-card" style={{minWidth:140}}>
-              <div className="metric-value" style={{color:m.color}}>{m.value}</div>
-              <div className="metric-label">{m.label}</div>
-            </div>
-          ))}
-        </div>
+
       </div>
 
       <div className="container">
@@ -167,8 +257,11 @@ export default function Strategy() {
 
             {/* Sliders */}
             <div className="glass-panel-sm" style={{padding:20, marginBottom:16}}>
-              <div className="section-label mb-4">
+              <div className="section-label mb-2">
                 <span className="label" style={{color:'var(--text-secondary)'}}>INTERVENTION PARAMETERS</span>
+              </div>
+              <div style={{color:'var(--text-muted)', fontSize:'0.8rem', marginBottom:'16px'}}>
+                Adjust each intervention to model its impact.
               </div>
               <div className="sliders">
                 {SLIDERS.map(s => (
@@ -204,8 +297,10 @@ export default function Strategy() {
                 {WARDS_LIST.map(w => (
                   <button key={w}
                     className={`ward-chip ${selectedWards.includes(w)?'ward-chip--active':''}`}
-                    onClick={() => toggleWard(w)}>
-                    {w}
+                    onClick={() => toggleWard(w)}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 12px', gap: '2px' }}>
+                    <span style={{fontWeight: 600}}>{w}</span>
+                    <span style={{fontSize: '0.65rem', opacity: 0.7}}>{WARD_CLUSTERS[w]}</span>
                   </button>
                 ))}
               </div>
@@ -235,7 +330,7 @@ export default function Strategy() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.05)"/>
                   <XAxis dataKey="year" tick={{fill:'#7a9bb5', fontSize:11}}/>
-                  <YAxis domain={[33, Math.max(baselineTemp + 2, 44)]} tick={{fill:'#7a9bb5', fontSize:11}}/>
+                  <YAxis domain={['dataMin - 0.5', Math.max(Math.ceil(baselineTemp + 1), 'dataMax')]} tick={{fill:'#7a9bb5', fontSize:11}}/>
                   <Tooltip content={<CustomChartTooltip/>}/>
                   {baselineTemp > 0 && (
                     <ReferenceLine y={baselineTemp} stroke="rgba(255,23,68,0.4)" strokeDasharray="6 4"
@@ -469,6 +564,43 @@ export default function Strategy() {
           </div>
         </div>
       </div>
+
+      {/* Citizen Alert Modal */}
+      {showModal && (
+        <div className="alert-modal-overlay">
+          <div className="alert-modal-content">
+            <h2 style={{ marginBottom: 16 }}>Citizen Communication Draft</h2>
+            <div className="alert-message-box">
+              <p><strong>📢 BBMP Urban Heat Initiative — {selectedWards.join(' & ')}</strong></p>
+              <br/>
+              <p>Starting January {new Date().getFullYear() + 1}, your ward will see:</p>
+              <ul>
+                {params.trees > 0 && <li>🌳 Tree planting along major corridors (Jan–Apr)</li>}
+                {params.coolRoofs > 0 && <li>🏠 Cool roof installations on commercial buildings (Feb–Jun)</li>}
+                {params.evBuses > 0 && <li>🚌 EV bus routes expanded by {params.evBuses}% (Apr onwards)</li>}
+                {params.waterStations > 0 && <li>💧 New hydration stations added (May onwards)</li>}
+              </ul>
+              <br/>
+              <p>Expected outcome: <strong>-{tempReduction}°C</strong> reduction in local heat by {new Date().getFullYear() + 5}.</p>
+              <p>This affects ~{(selectedWards.length * 22500).toLocaleString()} residents.</p>
+              <br/>
+              <p>For updates: bbmp.gov.in/heatplan</p>
+            </div>
+            
+            <div className="alert-modal-actions">
+              <button className="btn btn-secondary" style={{color:'#25D366', borderColor:'#25D366', fontWeight:'600'}} onClick={() => sendNotification('WhatsApp Broadcast')}>💬 Share WhatsApp Broadcast</button>
+              <button className="btn" style={{marginLeft:'auto'}} onClick={() => setShowModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="alert-toast">
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }

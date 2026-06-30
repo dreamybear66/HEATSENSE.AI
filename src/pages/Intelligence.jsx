@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Cell, Legend,
@@ -6,6 +7,7 @@ import {
   LineChart, Line, ReferenceLine
 } from 'recharts';
 import './Intelligence.css';
+import BengaluruMap from '../components/Map/BengaluruMap';
 
 /* ---- K-Means cluster data (simulated) ---- */
 
@@ -82,67 +84,29 @@ const CustomScatterTooltip = ({ active, payload }) => {
   );
 };
 
-/* ---- Animated neuron visual ---- */
-function NeuralCore() {
-  return (
-    <div className="neural-core">
-      <svg viewBox="0 0 320 200" className="neural-svg">
-        <defs>
-          <filter id="glow-f"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        {/* Input layer */}
-        {[40,80,120,160,200].map((y,i) => (
-          <g key={i}>
-            <circle cx={40} cy={y} r={8} fill="rgba(0,229,255,0.2)" stroke="var(--accent-cyan)" strokeWidth={1.5} filter="url(#glow-f)"/>
-            <text x={2} y={y+4} fontSize="8" fill="#7a9bb5" fontFamily="var(--font-mono)">
-              {['LST','NDVI','POP','RD','H₂O'][i]}
-            </text>
-          </g>
-        ))}
-        {/* Hidden layer 1 */}
-        {[60,100,140,180].map((y,i) => (
-          <g key={i}>
-            {[40,80,120,160,200].map((sy, si) => (
-              <line key={si} x1={48} y1={sy} x2={132} y2={y}
-                stroke="rgba(0,229,255,0.08)" strokeWidth="0.8"
-                className={`neural-line neural-line--${(i+si)%4}`}/>
-            ))}
-            <circle cx={140} cy={y} r={10} fill="rgba(0,229,255,0.15)" stroke="var(--accent-teal)" strokeWidth={1.5} filter="url(#glow-f)"/>
-          </g>
-        ))}
-        {/* Hidden layer 2 */}
-        {[80,120,160].map((y,i) => (
-          <g key={i}>
-            {[60,100,140,180].map((sy,si) => (
-              <line key={si} x1={148} y1={sy} x2={232} y2={y}
-                stroke="rgba(29,233,182,0.07)" strokeWidth="0.8"
-                className={`neural-line neural-line--${(i+si+2)%4}`}/>
-            ))}
-            <circle cx={240} cy={y} r={10} fill="rgba(29,233,182,0.15)" stroke="var(--accent-teal)" strokeWidth={1.5} filter="url(#glow-f)"/>
-          </g>
-        ))}
-        {/* Output layer */}
-        {[80,120,160].map((sy, si) => (
-          <line key={si} x1={248} y1={sy} x2={300} y2={120}
-            stroke="rgba(255,179,0,0.15)" strokeWidth="0.8"
-            className={`neural-line neural-line--${si}`}/>
-        ))}
-        <circle cx={305} cy={120} r={14} fill="rgba(255,179,0,0.2)" stroke="var(--accent-amber)" strokeWidth={2} filter="url(#glow-f)"/>
-        <text x={285} y={148} fontSize="8" fill="var(--accent-amber)" fontFamily="var(--font-mono)" textAnchor="middle">RISK</text>
-      </svg>
-    </div>
-  );
-}
-
 /* ============================================================ */
 export default function Intelligence() {
   const [activeCluster, setActiveCluster] = useState(null);
   const [tab, setTab] = useState('kmeans');
   const [clusterData, setClusterData] = useState([]);
   const [centroids, setCentroids] = useState([]);
+  const [mapWards, setMapWards] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const highlightedWard = searchParams.get('ward');
+
+  useEffect(() => {
+    if (highlightedWard) {
+      setTimeout(() => {
+        const el = document.getElementById('highlighted-ward-row');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [highlightedWard]);
 
   useEffect(() => {
     fetch('http://localhost:8000/api/clusters')
@@ -156,6 +120,20 @@ export default function Intelligence() {
         console.error("Failed to fetch clusters:", err);
         setLoading(false);
       });
+
+    fetch('http://localhost:8000/api/zones')
+      .then(res => res.json())
+      .then(data => {
+        const mapped = data.map(w => {
+           let c = 'C3';
+           if (w.heat > 38) c = 'C0';
+           else if (w.heat > 35) c = 'C1';
+           else if (w.heat > 32) c = 'C2';
+           return { ...w, cluster: c };
+        });
+        setMapWards(mapped);
+      })
+      .catch(err => console.error(err));
   }, []);
 
   const displayData = activeCluster
@@ -196,7 +174,6 @@ export default function Intelligence() {
             K-Means clustering, regression models, and explainable AI with confidence scoring.
           </p>
         </div>
-        <NeuralCore/>
       </div>
 
       <div className="container">
@@ -240,41 +217,49 @@ export default function Intelligence() {
           {tab === 'kmeans' && (
             <>
               <div className="section-label mb-4">
-                <span className="heading-md">LST vs NDVI — Cluster Space</span>
+                <span className="heading-md">Geospatial Distribution & Cluster Space</span>
                 {activeCluster && <span className="badge badge-info">Filtered: {activeCluster}</span>}
               </div>
-              <p className="body-sm mb-6" style={{color:'var(--text-secondary)'}}>
-                Each point = one Bengaluru ward. Color = assigned K-Means cluster. Click a cluster card above to filter.
+              <p className="body-sm text-secondary mb-4">
+                Geographic visualization of AI clusters across Bengaluru wards, alongside the traditional LST vs NDVI scatter distribution.
               </p>
-              <ResponsiveContainer width="100%" height={360}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.05)"/>
-                  <XAxis type="number" dataKey="lst" name="LST (°C)" domain={[26,52]}
-                    label={{value:'Land Surface Temp (°C)', position:'insideBottom', offset:-4, fill:'#7a9bb5', fontSize:11}}
-                    tick={{fill:'#7a9bb5', fontSize:10}}/>
-                  <YAxis type="number" dataKey="ndvi" name="NDVI" domain={[0,0.85]}
-                    label={{value:'NDVI', angle:-90, position:'insideLeft', fill:'#7a9bb5', fontSize:11}}
-                    tick={{fill:'#7a9bb5', fontSize:10}}/>
-                  <Tooltip content={<CustomScatterTooltip/>}/>
-                  {/* Data points by cluster */}
-                  {['C0','C1','C2','C3'].map(cl => {
-                    const cols = {C0:'#ff1744',C1:'#ff6d00',C2:'#ffb300',C3:'#00e676'};
-                    const pts = displayData.filter(d => d.cluster === cl);
-                    return (
-                      <Scatter key={cl} name={cl} data={pts} fill={cols[cl]} opacity={0.6}
-                        shape={<circle r={4}/>}/>
-                    );
-                  })}
-                  {/* Centroids */}
-                  {!activeCluster && centroids.map(ct => (
-                    <Scatter key={`cen-${ct.label}`}
-                      data={[{lst:ct.lst, ndvi:ct.ndvi, cluster:ct.label}]}
-                      fill="white" shape="diamond" size={80}/>
-                  ))}
-                </ScatterChart>
-              </ResponsiveContainer>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ height: '350px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                  <BengaluruMap wardsData={activeCluster ? mapWards.filter(w => w.cluster === activeCluster) : mapWards} colorMode="cluster" />
+                </div>
+                <div style={{ height: '350px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{top:10, right:20, bottom:10, left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.05)"/>
+                      <XAxis type="number" dataKey="lst" name="LST (°C)" domain={[26,52]}
+                        label={{value:'Land Surface Temp (°C)', position:'insideBottom', offset:-4, fill:'#7a9bb5', fontSize:11}}
+                        tick={{fill:'#7a9bb5', fontSize:10}}/>
+                      <YAxis type="number" dataKey="ndvi" name="NDVI" domain={[0,0.85]}
+                        label={{value:'NDVI', angle:-90, position:'insideLeft', fill:'#7a9bb5', fontSize:11}}
+                        tick={{fill:'#7a9bb5', fontSize:10}}/>
+                      <Tooltip content={<CustomScatterTooltip/>}/>
+                      {/* Data points by cluster */}
+                      {['C0','C1','C2','C3'].map(cl => {
+                        const cols = {C0:'#ff1744',C1:'#ff6d00',C2:'#ffb300',C3:'#00e676'};
+                        const pts = displayData.filter(d => d.cluster === cl);
+                        return (
+                          <Scatter key={cl} name={cl} data={pts} fill={cols[cl]} opacity={0.6}
+                            shape={<circle r={4}/>}/>
+                        );
+                      })}
+                      {/* Centroids */}
+                      {!activeCluster && centroids.map(ct => (
+                        <Scatter key={`cen-${ct.label}`}
+                          data={[{lst:ct.lst, ndvi:ct.ndvi, cluster:ct.label}]}
+                          fill="white" shape="diamond" size={80}/>
+                      ))}
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
               <div className="chart-legend mt-4">
-              {dynamicClusters.map(c => (
+                {dynamicClusters.map(c => (
                   <div key={c.label} className="chart-legend__item">
                     <span style={{width:10,height:10,borderRadius:'50%', background:c.color, display:'block'}}/>
                     <span className="body-sm">{c.name}</span>
@@ -386,10 +371,12 @@ export default function Intelligence() {
           <div className="conf-table">
             <div className="conf-table__head">
               <span>Ward</span><span>Cluster</span><span>Confidence</span>
-              <span>LST</span><span>NDVI</span><span>Recommended Actions</span>
+              <span>LST</span><span>NDVI</span><span>Recommended Actions</span><span>Simulate</span>
             </div>
-            {CONFIDENCE.map((row, i) => (
-              <div key={i} className="conf-table__row">
+            {CONFIDENCE.map((row, i) => {
+              const isHighlighted = highlightedWard && (highlightedWard.toLowerCase().includes(row.ward.toLowerCase()) || row.ward.toLowerCase().includes(highlightedWard.toLowerCase()));
+              return (
+              <div key={i} className={`conf-table__row ${isHighlighted ? 'highlighted-ward' : ''}`} id={isHighlighted ? 'highlighted-ward-row' : undefined}>
                 <span style={{fontWeight:600}}>{row.ward}</span>
                 <span className={`badge ${CLUSTER_BADGE[row.cluster]}`}>{row.cluster}</span>
                 <div className="conf-bar-wrap">
@@ -406,8 +393,14 @@ export default function Intelligence() {
                     <span key={ai} className="action-tag">{a}</span>
                   ))}
                 </div>
+                <div>
+                  <a href={`/strategy?ward=${encodeURIComponent(row.ward)}&interventions=${encodeURIComponent(row.interventions.join(','))}`} className="btn btn-secondary" style={{padding: '4px 8px', fontSize: '0.75rem', minHeight: '0'}}>
+                    Simulate &rarr;
+                  </a>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -1,31 +1,42 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid
+  AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Bar, Line, Cell
 } from 'recharts';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './Home.css';
 import BengaluruMap from '../components/Map/BengaluruMap';
-import ThermalGlobe from '../components/Three/ThermalGlobe';
-import HeatDataOrbit from '../components/Three/HeatDataOrbit';
+import HeatBackground from '../components/Three/HeatBackground';
 
 gsap.registerPlugin(ScrollTrigger);
 
 /* ---- Synthetic data ---- */
-const heatTrend = Array.from({length: 24}, (_, i) => ({
+const INITIAL_TREND = Array.from({length: 24}, (_, i) => ({
   hour: `${String(i).padStart(2,'0')}:00`,
-  lst:  32 + Math.sin(i * 0.4) * 6 + Math.random() * 2,
+  lst:  26,
   ndvi: 0.3 + Math.sin(i * 0.3 + 1) * 0.12 + Math.random() * 0.03,
 }));
 
 const RISK_COLOR = { critical:'#ff1744', high:'#ff6d00', moderate:'#ffb300', safe:'#00e676' };
 
-const STATS = [
+const INITIAL_STATS = [
   { value:'198', label:'Wards Analyzed', unit:'', color:'var(--accent-cyan)' },
-  { value:'47',  label:'Critical Zones', unit:'', color:'var(--accent-red)' },
-  { value:'8.4M', label:'Citizens at Risk', unit:'', color:'var(--accent-amber)' },
+  { value:'+3.8',  label:'Current UHI Intensity', unit:'°C', color:'var(--accent-red)' },
+  { value:'34', label:'Urban Canopy Deficit', unit:'%', color:'var(--accent-amber)' },
   { value:'41.2', label:'Peak Heat Index', unit:'°C', color:'var(--accent-orange)' },
+];
+
+const STATIC_METRICS = [
+  { value: '39.2°C', label: 'Whitefield UHI', color: '#ff1744' },
+  { value: '37.8°C', label: 'Koramangala UHI', color: '#ff4b00' },
+  { value: '-2.4°C', label: 'ML Projection', color: '#00e5ff' },
+  { value: '1.8M', label: 'Population at Risk', color: '#ffb300' },
+  { value: '94%', label: 'Canopy Coverage Needed', color: '#00ffa3' },
+  { value: '62', label: 'High-Risk Wards', color: '#ff6d00' },
+  { value: '14.6MW', label: 'AC Peak Load', color: '#e040fb' },
+  { value: '3.2°C', label: 'Night Cooling Gap', color: '#00b0ff' },
 ];
 
 const FEATURES = [
@@ -141,6 +152,48 @@ export default function Home() {
   const [wards, setWards] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [statsData, setStatsData] = useState(INITIAL_STATS);
+  const [trendData, setTrendData] = useState(INITIAL_TREND);
+
+  useEffect(() => {
+    const API_KEY = "73896fc21b4e7c73d1d51f4f83f7f207";
+    
+    // Fetch current weather for the global stats panel
+    fetch(`https://api.openweathermap.org/data/2.5/weather?q=Bengaluru&units=metric&appid=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.main) {
+          const currentTemp = data.main.temp;
+          setStatsData(prev => {
+            const newStats = [...prev];
+            newStats[3] = { ...newStats[3], value: currentTemp.toFixed(1) };
+            return newStats;
+          });
+        }
+      })
+      .catch(err => console.error("Error fetching real time weather:", err));
+
+    // Fetch 5-day / 3-hour forecast for the 24-hour Thermal Profile
+    fetch(`https://api.openweathermap.org/data/2.5/forecast?q=Bengaluru&units=metric&appid=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.list) {
+          // Take the next 8 3-hour forecasts (spanning 24 hours)
+          const next24Hours = data.list.slice(0, 8).map((item, index) => {
+            const date = new Date(item.dt * 1000);
+            return {
+              hour: `${String(date.getHours()).padStart(2, '0')}:00`,
+              lst: item.main.temp,
+              // Keep the NDVI visual variance
+              ndvi: 0.3 + Math.sin(index * 0.3 + 1) * 0.12 + Math.random() * 0.03,
+            };
+          });
+          setTrendData(next24Hours);
+        }
+      })
+      .catch(err => console.error("Error fetching forecast:", err));
+  }, []);
+
   /* GSAP refs */
   const heroContentRef = useRef(null);
   const heroGlobeRef   = useRef(null);
@@ -183,27 +236,6 @@ export default function Home() {
       }
     );
 
-    // ── GSAP ScrollTrigger: Globe section ──
-    gsap.fromTo('.globe-section',
-      { opacity: 0, y: 60 },
-      {
-        opacity: 1, y: 0, duration: 1.1, ease: 'power3.out',
-        scrollTrigger: { trigger: '.globe-section', start: 'top 80%', toggleActions: 'play none none none' },
-      }
-    );
-
-    // ── Parallax float on globe canvas ──
-    gsap.to('.globe-canvas-wrapper', {
-      yPercent: -12,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: '.globe-section',
-        start: 'top bottom',
-        end: 'bottom top',
-        scrub: true,
-      },
-    });
-
     // ── GSAP ScrollTrigger: Chart ──
     gsap.fromTo('.chart-reveal',
       { opacity: 0, y: 40 },
@@ -239,8 +271,11 @@ export default function Home() {
     };
   }, []);
 
+  const top12Wards = [...wards].sort((a,b) => b.heat - a.heat).slice(0, 12);
+
   return (
     <div className="home">
+      <HeatBackground />
       {/* Background effects */}
       <div className="grid-bg"/>
       <div className="scanlines"/>
@@ -310,8 +345,8 @@ export default function Home() {
       {/* ===== STATS STRIP ===== */}
       <section className="stats-strip">
         <div className="container">
-          <div className="stats-strip__grid">
-            {STATS.map((s, i) => (
+          <div className="stats-strip__grid" ref={statsRef}>
+            {statsData.map((s, i) => (
               <div key={i} className="stats-strip__item glass-panel-sm" style={{opacity:0}}>
                 <div className="metric-value" style={{color: s.color}}>
                   {s.value}<span style={{fontSize:'1rem'}}>{s.unit}</span>
@@ -323,57 +358,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== THREE.JS THERMAL GLOBE SECTION ===== */}
-      <section className="globe-section section" ref={globeSectionRef}>
-        <div className="container">
-          <div className="globe-section__header">
-            <div className="section-label" style={{marginBottom:8}}>
-              <span className="heading-md">Real-Time Heat Intelligence</span>
-              <span className="badge badge-critical">3D ANALYSIS</span>
-            </div>
-            <p className="body-sm" style={{color:'var(--text-secondary)', maxWidth: 520, marginBottom: 36}}>
-              Interactive globe visualising Bengaluru's urban heat hotspots mapped from satellite LST data.
-              Each node represents a high-risk ward cluster. Hover to explore.
-            </p>
-          </div>
-
-          <div className="globe-layout">
-            {/* Three.js Globe */}
-            <div className="globe-canvas-wrapper glass-panel">
-              <div className="globe-header">
-                <span className="pulse-dot pulse-dot-red"/>
-                <span className="label" style={{color:'var(--accent-red)'}}>THERMAL HOTSPOT GLOBE</span>
-                <span className="label" style={{color:'var(--text-muted)', marginLeft:'auto'}}>12 HIGH-RISK CLUSTERS</span>
-              </div>
-              <div style={{ height: '420px' }}>
-                <ThermalGlobe />
-              </div>
-              <div className="globe-footer">
-                <div className="globe-legend">
-                  <span className="globe-legend-dot" style={{background:'#ff1744'}}/>
-                  <span className="caption text-muted">Severe (&gt;39°C)</span>
-                </div>
-                <div className="globe-legend">
-                  <span className="globe-legend-dot" style={{background:'#ff6d00'}}/>
-                  <span className="caption text-muted">High (37–39°C)</span>
-                </div>
-                <div className="globe-legend">
-                  <span className="globe-legend-dot" style={{background:'#ffb300'}}/>
-                  <span className="caption text-muted">Moderate (35–37°C)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* GSAP Floating Data Nodes */}
-            <div className="globe-side-panel">
-              <div className="section-label" style={{marginBottom:16}}>
-                <span className="mono" style={{fontSize:'0.7rem', letterSpacing:'0.12em', color:'var(--accent-cyan)'}}>LIVE METRICS</span>
-              </div>
-              <HeatDataOrbit />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* removed globe section */}
 
       {/* ===== HEAT TREND CHART ===== */}
       <section className="section container chart-reveal" style={{opacity:0}}>
@@ -386,7 +371,7 @@ export default function Home() {
         </p>
         <div className="glass-panel" style={{padding:'24px', height:300}}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={heatTrend}>
+            <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="heatGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#ff6d00" stopOpacity={0.4}/>
@@ -419,7 +404,7 @@ export default function Home() {
         <div className="ward-table glass-panel">
           <div className="ward-table__header">
             <span>Rank</span><span>Ward</span><span>LST</span>
-            <span>NDVI</span><span>Population</span><span>Risk</span>
+            <span>NDVI</span><span>Population</span><span>Risk</span><span>Action</span>
           </div>
           {loading ? (
             <div style={{padding: 20, textAlign: 'center', color: 'var(--text-muted)'}}>Loading real-time API data...</div>
@@ -434,30 +419,46 @@ export default function Home() {
                 <span className="mono" style={{color:'var(--accent-green)'}}>{w.ndvi.toFixed(2)}</span>
                 <span className="mono" style={{color:'var(--text-secondary)'}}>{(w.pop/1000).toFixed(0)}K</span>
                 <span className={`badge badge-${w.risk}`}>{w.risk}</span>
+                <span>
+                  <Link to={`/intelligence?ward=${encodeURIComponent(w.name)}`} className="btn btn-secondary" style={{padding: '4px 8px', fontSize: '0.75rem', minHeight: '0'}}>
+                    Analyze &rarr;
+                  </Link>
+                </span>
               </div>
             ))
           )}
         </div>
       </section>
 
-      {/* ===== FEATURES ===== */}
+      {/* ===== HOW IT WORKS ===== */}
       <section className="section container">
-        <div className="section-label">
-          <span className="heading-md">Platform Capabilities</span>
+        <div className="section-label" style={{justifyContent: 'center', marginBottom: '40px'}}>
+          <span className="heading-md">How the System Works</span>
         </div>
-        <div className="grid-2 features-grid">
-          {FEATURES.map((f, i) => (
-            <div key={i} className="feature-card glass-panel" style={{opacity:0}}>
-              <div className="feature-card__icon" style={{color: f.color}}>{f.icon}</div>
-              <div className="feature-card__body">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="heading-md">{f.title}</span>
-                  <span className="badge badge-info">{f.code}</span>
-                </div>
-                <p style={{color:'var(--text-secondary)', fontSize:'0.9rem', lineHeight:1.7}}>{f.desc}</p>
-              </div>
-            </div>
-          ))}
+        <div className="how-it-works-flow">
+          <div className="flow-step glass-panel">
+            <div className="flow-step__icon">🛰️</div>
+            <div className="flow-step__title">1. Satellite Data</div>
+            <div className="flow-step__desc">Ingests live MODIS & Sentinel-2 LST and NDVI data.</div>
+          </div>
+          <div className="flow-arrow">&rarr;</div>
+          <div className="flow-step glass-panel">
+            <div className="flow-step__icon">🧠</div>
+            <div className="flow-step__title">2. AI Clustering</div>
+            <div className="flow-step__desc">K-Means identifies critical high-risk heat pockets.</div>
+          </div>
+          <div className="flow-arrow">&rarr;</div>
+          <div className="flow-step glass-panel">
+            <div className="flow-step__icon">📈</div>
+            <div className="flow-step__title">3. Scenario Simulation</div>
+            <div className="flow-step__desc">Tests cooling interventions (trees, cool roofs).</div>
+          </div>
+          <div className="flow-arrow">&rarr;</div>
+          <div className="flow-step glass-panel">
+            <div className="flow-step__icon">🚚</div>
+            <div className="flow-step__title">4. Deployment</div>
+            <div className="flow-step__desc">Dispatches fleet and tracks logistics live.</div>
+          </div>
         </div>
       </section>
 
